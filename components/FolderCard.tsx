@@ -9,6 +9,8 @@ interface Props {
 }
 
 export default function FolderCard({ folder, onOpen, onRename, onDelete }: Props) {
+  const isArchived = folder.id === 'ARCHIVED';
+
   return (
     <div
       onClick={onOpen}
@@ -16,14 +18,16 @@ export default function FolderCard({ folder, onOpen, onRename, onDelete }: Props
     >
       <div className="flex items-center justify-between mb-4">
         <FolderIcon size={32} className="text-[#FFD700]" />
-        <div className="opacity-0 group-hover:opacity-100 transition">
-          <button onClick={(e) => { e.stopPropagation(); onRename(); }}>
-            ✎
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="ml-2 text-red-500">
-            ✕
-          </button>
-        </div>
+        {!isArchived && (
+          <div className="opacity-0 group-hover:opacity-100 transition">
+            <button onClick={(e) => { e.stopPropagation(); onRename(); }}>
+              ✎
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="ml-2 text-red-500">
+              ✕
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="text-sm font-bold truncate">{folder.name}</div>
