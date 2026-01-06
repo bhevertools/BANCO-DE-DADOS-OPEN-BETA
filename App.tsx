@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Plus, Loader2, RefreshCw, LayoutGrid, Zap, Clock, Filter, ListMusic, BrainCircuit, Smile, X, ArrowRight, UserCircle, Target, Layers, Box, Maximize, Tag, Baby } from 'lucide-react';
+import { Search, Plus, Loader2, RefreshCw, LayoutGrid, Zap, Clock, Filter, ListMusic, BrainCircuit, Smile, X, ArrowRight, ArrowLeft, UserCircle, Target, Layers, Box, Maximize, Tag, Baby } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import AssetCard from './components/AssetCard';
 import AddAssetForm from './components/AddAssetForm';
@@ -110,6 +110,46 @@ const MainApp: React.FC = () => {
   const [ugcGeneroFilter, setUgcGeneroFilter] = useState('');
   const [ugcFaixaEtariaFilter, setUgcFaixaEtariaFilter] = useState('');
 
+  // Deepfakes Filters State
+  const [deepfakesPersonagemFilter, setDeepfakesPersonagemFilter] = useState('');
+  const [deepfakesVersaoFilter, setDeepfakesVersaoFilter] = useState('');
+  const [deepfakesTagFilter, setDeepfakesTagFilter] = useState('');
+  const [deepfakesOnlyWithVoice, setDeepfakesOnlyWithVoice] = useState(false);
+  const [deepfakesOnlyWithOriginal, setDeepfakesOnlyWithOriginal] = useState(false);
+
+  // Voice Clones Filters State
+  const [voiceCloneTagFilter, setVoiceCloneTagFilter] = useState('');
+  const [voiceCloneDurationFilter, setVoiceCloneDurationFilter] = useState('');
+
+  type ViewState = {
+    activeCategory: AssetCategory | 'ALL';
+    searchQuery: string;
+    filters: {
+      vslMomentFilter: string;
+      emotionFilter: string;
+      activeTagFilter: string;
+      tiktokNichoFilter: string;
+      tiktokGeneroFilter: string;
+      tiktokTipoFilter: string;
+      veoProdutoFilter: string;
+      veoDimensaoFilter: string;
+      veoTagFilter: string;
+      socialProofNichoFilter: string;
+      socialProofGeneroFilter: string;
+      ugcGeneroFilter: string;
+      ugcFaixaEtariaFilter: string;
+      deepfakesPersonagemFilter: string;
+      deepfakesVersaoFilter: string;
+      deepfakesTagFilter: string;
+      deepfakesOnlyWithVoice: boolean;
+      deepfakesOnlyWithOriginal: boolean;
+      voiceCloneTagFilter: string;
+      voiceCloneDurationFilter: string;
+    };
+  };
+
+  const [navStack, setNavStack] = useState<ViewState[]>([]);
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -133,7 +173,7 @@ const MainApp: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  useEffect(() => {
+  const resetAllFilters = useCallback(() => {
     setVslMomentFilter('');
     setEmotionFilter('');
     setActiveTagFilter('');
@@ -147,7 +187,14 @@ const MainApp: React.FC = () => {
     setSocialProofGeneroFilter('');
     setUgcGeneroFilter('');
     setUgcFaixaEtariaFilter('');
-  }, [activeCategory]);
+    setDeepfakesPersonagemFilter('');
+    setDeepfakesVersaoFilter('');
+    setDeepfakesTagFilter('');
+    setDeepfakesOnlyWithVoice(false);
+    setDeepfakesOnlyWithOriginal(false);
+    setVoiceCloneTagFilter('');
+    setVoiceCloneDurationFilter('');
+  }, []);
 
   const mapToUnified = (item: any, catId: AssetCategory): UnifiedAsset => {
     switch(catId) {
@@ -202,10 +249,104 @@ const MainApp: React.FC = () => {
     return map;
   }, [allAssets]);
 
+  const getCurrentViewState = useCallback((): ViewState => {
+    return {
+      activeCategory,
+      searchQuery,
+      filters: {
+        vslMomentFilter,
+        emotionFilter,
+        activeTagFilter,
+        tiktokNichoFilter,
+        tiktokGeneroFilter,
+        tiktokTipoFilter,
+        veoProdutoFilter,
+        veoDimensaoFilter,
+        veoTagFilter,
+        socialProofNichoFilter,
+        socialProofGeneroFilter,
+        ugcGeneroFilter,
+        ugcFaixaEtariaFilter,
+        deepfakesPersonagemFilter,
+        deepfakesVersaoFilter,
+        deepfakesTagFilter,
+        deepfakesOnlyWithVoice,
+        deepfakesOnlyWithOriginal,
+        voiceCloneTagFilter,
+        voiceCloneDurationFilter,
+      },
+    };
+  }, [
+    activeCategory,
+    searchQuery,
+    vslMomentFilter,
+    emotionFilter,
+    activeTagFilter,
+    tiktokNichoFilter,
+    tiktokGeneroFilter,
+    tiktokTipoFilter,
+    veoProdutoFilter,
+    veoDimensaoFilter,
+    veoTagFilter,
+    socialProofNichoFilter,
+    socialProofGeneroFilter,
+    ugcGeneroFilter,
+    ugcFaixaEtariaFilter,
+    deepfakesPersonagemFilter,
+    deepfakesVersaoFilter,
+    deepfakesTagFilter,
+    deepfakesOnlyWithVoice,
+    deepfakesOnlyWithOriginal,
+    voiceCloneTagFilter,
+    voiceCloneDurationFilter,
+  ]);
+
+  const restoreViewState = useCallback((state: ViewState) => {
+    setActiveCategory(state.activeCategory);
+    setSearchQuery(state.searchQuery);
+
+    setVslMomentFilter(state.filters.vslMomentFilter);
+    setEmotionFilter(state.filters.emotionFilter);
+    setActiveTagFilter(state.filters.activeTagFilter);
+    setTiktokNichoFilter(state.filters.tiktokNichoFilter);
+    setTiktokGeneroFilter(state.filters.tiktokGeneroFilter);
+    setTiktokTipoFilter(state.filters.tiktokTipoFilter);
+    setVeoProdutoFilter(state.filters.veoProdutoFilter);
+    setVeoDimensaoFilter(state.filters.veoDimensaoFilter);
+    setVeoTagFilter(state.filters.veoTagFilter);
+    setSocialProofNichoFilter(state.filters.socialProofNichoFilter);
+    setSocialProofGeneroFilter(state.filters.socialProofGeneroFilter);
+    setUgcGeneroFilter(state.filters.ugcGeneroFilter);
+    setUgcFaixaEtariaFilter(state.filters.ugcFaixaEtariaFilter);
+
+    setDeepfakesPersonagemFilter(state.filters.deepfakesPersonagemFilter);
+    setDeepfakesVersaoFilter(state.filters.deepfakesVersaoFilter);
+    setDeepfakesTagFilter(state.filters.deepfakesTagFilter);
+    setDeepfakesOnlyWithVoice(state.filters.deepfakesOnlyWithVoice);
+    setDeepfakesOnlyWithOriginal(state.filters.deepfakesOnlyWithOriginal);
+
+    setVoiceCloneTagFilter(state.filters.voiceCloneTagFilter);
+    setVoiceCloneDurationFilter(state.filters.voiceCloneDurationFilter);
+  }, []);
+
   const handleViewRelated = (cat: AssetCategory, searchTerm: string) => {
+    setNavStack(prev => [...prev, getCurrentViewState()]);
+    // ao navegar por "related", limpamos filtros atuais e aplicamos apenas a busca
+    resetAllFilters();
     setActiveCategory(cat);
     setSearchQuery(searchTerm);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToPrevious = () => {
+    setNavStack(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      // restaura a view anterior
+      restoreViewState(last);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return prev.slice(0, -1);
+    });
   };
 
   const categoryCounts = useMemo(() => {
@@ -268,6 +409,25 @@ const MainApp: React.FC = () => {
     };
   }, [dbData, activeCategory]);
 
+  const deepfakesOptions = useMemo(() => {
+    if (activeCategory !== AssetCategory.DEEPFAKES) return null;
+    const currentTableData = dbData[activeCategory] || [];
+    return {
+      personagens: Array.from(new Set(currentTableData.map(i => i.personagem).filter(Boolean))),
+      versoes: Array.from(new Set(currentTableData.map(i => i.versao).filter(Boolean))),
+      tags: Array.from(new Set(currentTableData.flatMap((i: any) => i.tags || []).filter(Boolean))),
+    };
+  }, [dbData, activeCategory]);
+
+  const voiceClonesOptions = useMemo(() => {
+    if (activeCategory !== AssetCategory.VOICE_CLONES) return null;
+    const currentTableData = dbData[activeCategory] || [];
+    return {
+      tags: Array.from(new Set(currentTableData.flatMap((i: any) => i.tags || []).filter(Boolean))),
+      duracoes: Array.from(new Set(currentTableData.map((i: any) => i.duracao).filter(Boolean))),
+    };
+  }, [dbData, activeCategory]);
+
   const filtered = allAssets.filter(a => {
     const matchesCategory = activeCategory === 'ALL' || a.category === activeCategory;
     const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -311,7 +471,24 @@ const MainApp: React.FC = () => {
       if (ugcFaixaEtariaFilter && raw.idade !== ugcFaixaEtariaFilter) matchesUgcFilters = false;
     }
 
-    return matchesCategory && matchesSearch && matchesAudioFilters && matchesTikTokFilters && matchesVeoFilters && matchesSocialProofFilters && matchesUgcFilters;
+    let matchesDeepfakesFilters = true;
+    if (activeCategory === AssetCategory.DEEPFAKES) {
+      const raw = a.raw as any;
+      if (deepfakesPersonagemFilter && raw.personagem !== deepfakesPersonagemFilter) matchesDeepfakesFilters = false;
+      if (deepfakesVersaoFilter && raw.versao !== deepfakesVersaoFilter) matchesDeepfakesFilters = false;
+      if (deepfakesTagFilter && !a.tags.includes(deepfakesTagFilter)) matchesDeepfakesFilters = false;
+      if (deepfakesOnlyWithVoice && !voiceMap.has(a.title.toLowerCase())) matchesDeepfakesFilters = false;
+      if (deepfakesOnlyWithOriginal && !originalVideoMap.has(a.title.toLowerCase())) matchesDeepfakesFilters = false;
+    }
+
+    let matchesVoiceCloneFilters = true;
+    if (activeCategory === AssetCategory.VOICE_CLONES) {
+      const raw = a.raw as any;
+      if (voiceCloneDurationFilter && raw.duracao !== voiceCloneDurationFilter) matchesVoiceCloneFilters = false;
+      if (voiceCloneTagFilter && !a.tags.includes(voiceCloneTagFilter)) matchesVoiceCloneFilters = false;
+    }
+
+    return matchesCategory && matchesSearch && matchesAudioFilters && matchesTikTokFilters && matchesVeoFilters && matchesSocialProofFilters && matchesUgcFilters && matchesDeepfakesFilters && matchesVoiceCloneFilters;
   });
 
   const handleSave = async (cat: AssetCategory, data: any, id?: string) => {
@@ -344,19 +521,40 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-black overflow-hidden font-['Inter'] text-white animate-[fade-in_1s_ease-out]">
-      <Sidebar activeCategory={activeCategory} onCategoryChange={(cat) => { setActiveCategory(cat); setSearchQuery(''); }} />
+      <Sidebar
+        activeCategory={activeCategory}
+        onCategoryChange={(cat) => {
+          setNavStack([]);
+          resetAllFilters();
+          setActiveCategory(cat);
+          setSearchQuery('');
+        }}
+      />
       
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 border-b border-white/5 flex items-center px-8 justify-between bg-black/50 backdrop-blur-md sticky top-0 z-30">
-          <div className="relative w-96 group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-[#FFD700] transition-colors" size={16} />
-            <input 
-              type="text" 
-              placeholder="Buscar em toda a biblioteca..." 
-              className="w-full bg-[#111] border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-[#FFD700] outline-none transition-all text-white" 
-              value={searchQuery} 
-              onChange={e => setSearchQuery(e.target.value)} 
-            />
+          <div className="flex items-center gap-3">
+            {navStack.length > 0 && (
+              <button
+                onClick={handleBackToPrevious}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all"
+                title="Voltar para onde você estava"
+              >
+                <ArrowLeft size={14} className="text-[#FFD700]" />
+                Voltar
+              </button>
+            )}
+
+            <div className="relative w-96 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-[#FFD700] transition-colors" size={16} />
+              <input 
+                type="text" 
+                placeholder="Buscar em toda a biblioteca..." 
+                className="w-full bg-[#111] border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-[#FFD700] outline-none transition-all text-white" 
+                value={searchQuery} 
+                onChange={e => setSearchQuery(e.target.value)} 
+              />
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -489,7 +687,275 @@ const MainApp: React.FC = () => {
           </div>
         )}
 
-        {/* ... (Other filter UIs) ... */}
+        {/* VEO 3 Filters */}
+        {activeCategory === AssetCategory.VEO3 && veoOptions && (
+          <div className="bg-[#050505] border-b border-white/5 px-8 py-3 flex items-center gap-6 animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-2 text-[#FFD700] text-[10px] font-black uppercase tracking-widest border-r border-white/10 pr-6 shrink-0">
+              <Filter size={14} /> Filtros VEO 3
+            </div>
+
+            <div className="flex-1 flex items-center gap-4 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 shrink-0">
+                <Box size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={veoProdutoFilter}
+                  onChange={e => setVeoProdutoFilter(e.target.value)}
+                >
+                  <option value="">TODOS OS PRODUTOS</option>
+                  {veoOptions.produtos.map(p => <option key={p} value={p}>{String(p).toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Maximize size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={veoDimensaoFilter}
+                  onChange={e => setVeoDimensaoFilter(e.target.value)}
+                >
+                  <option value="">TODAS AS DIMENSÕES</option>
+                  {veoOptions.dimensoes.map(d => <option key={d} value={d}>{String(d).toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Tag size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={veoTagFilter}
+                  onChange={e => setVeoTagFilter(e.target.value)}
+                >
+                  <option value="">TODAS AS TAGS</option>
+                  {veoOptions.tags.map(t => <option key={t} value={t}>{String(t).toUpperCase()}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {(veoProdutoFilter || veoDimensaoFilter || veoTagFilter) && (
+              <button
+                onClick={() => { setVeoProdutoFilter(''); setVeoDimensaoFilter(''); setVeoTagFilter(''); }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black hover:bg-red-500/20 transition-all shrink-0"
+              >
+                <X size={12} /> LIMPAR FILTROS
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Social Proof Filters */}
+        {activeCategory === AssetCategory.SOCIAL_PROOF && socialProofOptions && (
+          <div className="bg-[#050505] border-b border-white/5 px-8 py-3 flex items-center gap-6 animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-2 text-[#FFD700] text-[10px] font-black uppercase tracking-widest border-r border-white/10 pr-6 shrink-0">
+              <Filter size={14} /> Filtros Provas Sociais
+            </div>
+
+            <div className="flex-1 flex items-center gap-4 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 shrink-0">
+                <Target size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={socialProofNichoFilter}
+                  onChange={e => setSocialProofNichoFilter(e.target.value)}
+                >
+                  <option value="">TODOS OS NICHOS</option>
+                  {socialProofOptions.nichos.map(n => <option key={n} value={n}>{String(n).toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <UserCircle size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={socialProofGeneroFilter}
+                  onChange={e => setSocialProofGeneroFilter(e.target.value)}
+                >
+                  <option value="">TODOS OS GÊNEROS</option>
+                  {socialProofOptions.generos.map(g => <option key={g} value={g}>{String(g).toUpperCase()}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {(socialProofNichoFilter || socialProofGeneroFilter) && (
+              <button
+                onClick={() => { setSocialProofNichoFilter(''); setSocialProofGeneroFilter(''); }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black hover:bg-red-500/20 transition-all shrink-0"
+              >
+                <X size={12} /> LIMPAR FILTROS
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* UGC Filters */}
+        {activeCategory === AssetCategory.UGC_TESTIMONIALS && ugcOptions && (
+          <div className="bg-[#050505] border-b border-white/5 px-8 py-3 flex items-center gap-6 animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-2 text-[#FFD700] text-[10px] font-black uppercase tracking-widest border-r border-white/10 pr-6 shrink-0">
+              <Filter size={14} /> Filtros Depoimentos UGC
+            </div>
+
+            <div className="flex-1 flex items-center gap-4 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 shrink-0">
+                <UserCircle size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={ugcGeneroFilter}
+                  onChange={e => setUgcGeneroFilter(e.target.value)}
+                >
+                  <option value="">TODOS OS GÊNEROS</option>
+                  {ugcOptions.generos.map(g => <option key={g} value={g}>{String(g).toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Baby size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={ugcFaixaEtariaFilter}
+                  onChange={e => setUgcFaixaEtariaFilter(e.target.value)}
+                >
+                  <option value="">TODAS AS IDADES</option>
+                  {ugcOptions.faixasEtarias.map(f => <option key={f} value={f}>{String(f).toUpperCase()}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {(ugcGeneroFilter || ugcFaixaEtariaFilter) && (
+              <button
+                onClick={() => { setUgcGeneroFilter(''); setUgcFaixaEtariaFilter(''); }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black hover:bg-red-500/20 transition-all shrink-0"
+              >
+                <X size={12} /> LIMPAR FILTROS
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Deepfakes Filters */}
+        {activeCategory === AssetCategory.DEEPFAKES && deepfakesOptions && (
+          <div className="bg-[#050505] border-b border-white/5 px-8 py-3 flex items-center gap-6 animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-2 text-[#FFD700] text-[10px] font-black uppercase tracking-widest border-r border-white/10 pr-6 shrink-0">
+              <Filter size={14} /> Filtros Deepfakes
+            </div>
+
+            <div className="flex-1 flex items-center gap-4 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 shrink-0">
+                <UserCircle size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={deepfakesPersonagemFilter}
+                  onChange={e => setDeepfakesPersonagemFilter(e.target.value)}
+                >
+                  <option value="">TODOS OS PERSONAGENS</option>
+                  {deepfakesOptions.personagens.map(p => <option key={p} value={p}>{String(p).toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Layers size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={deepfakesVersaoFilter}
+                  onChange={e => setDeepfakesVersaoFilter(e.target.value)}
+                >
+                  <option value="">TODAS AS VERSÕES</option>
+                  {deepfakesOptions.versoes.map(v => <option key={v} value={v}>{String(v).toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Tag size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={deepfakesTagFilter}
+                  onChange={e => setDeepfakesTagFilter(e.target.value)}
+                >
+                  <option value="">TODAS AS TAGS</option>
+                  {deepfakesOptions.tags.map(t => <option key={t} value={t}>{String(t).toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <button
+                onClick={() => setDeepfakesOnlyWithVoice(v => !v)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all shrink-0 ${
+                  deepfakesOnlyWithVoice ? 'bg-[#FFD700] text-black border-[#FFD700]' : 'bg-black text-gray-400 border-white/10 hover:text-white'
+                }`}
+                title="Mostrar apenas deepfakes que têm voz vinculada"
+              >
+                Voz vinculada
+              </button>
+
+              <button
+                onClick={() => setDeepfakesOnlyWithOriginal(v => !v)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all shrink-0 ${
+                  deepfakesOnlyWithOriginal ? 'bg-white text-black border-white' : 'bg-black text-gray-400 border-white/10 hover:text-white'
+                }`}
+                title="Mostrar apenas deepfakes que têm vídeo original"
+              >
+                Vídeo original
+              </button>
+            </div>
+
+            {(deepfakesPersonagemFilter || deepfakesVersaoFilter || deepfakesTagFilter || deepfakesOnlyWithVoice || deepfakesOnlyWithOriginal) && (
+              <button
+                onClick={() => {
+                  setDeepfakesPersonagemFilter('');
+                  setDeepfakesVersaoFilter('');
+                  setDeepfakesTagFilter('');
+                  setDeepfakesOnlyWithVoice(false);
+                  setDeepfakesOnlyWithOriginal(false);
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black hover:bg-red-500/20 transition-all shrink-0"
+              >
+                <X size={12} /> LIMPAR FILTROS
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Voice Clones Filters */}
+        {activeCategory === AssetCategory.VOICE_CLONES && voiceClonesOptions && (
+          <div className="bg-[#050505] border-b border-white/5 px-8 py-3 flex items-center gap-6 animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-2 text-[#FFD700] text-[10px] font-black uppercase tracking-widest border-r border-white/10 pr-6 shrink-0">
+              <Filter size={14} /> Filtros Voz pra Clonar
+            </div>
+
+            <div className="flex-1 flex items-center gap-4 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 shrink-0">
+                <Tag size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={voiceCloneTagFilter}
+                  onChange={e => setVoiceCloneTagFilter(e.target.value)}
+                >
+                  <option value="">TODAS AS TAGS</option>
+                  {voiceClonesOptions.tags.map(t => <option key={t} value={t}>{String(t).toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Clock size={12} className="text-gray-600" />
+                <select
+                  className="bg-black border border-white/10 rounded-lg text-[10px] py-1.5 px-3 text-gray-400 focus:text-white outline-none cursor-pointer"
+                  value={voiceCloneDurationFilter}
+                  onChange={e => setVoiceCloneDurationFilter(e.target.value)}
+                >
+                  <option value="">TODAS AS DURAÇÕES</option>
+                  {voiceClonesOptions.duracoes.map(d => <option key={d} value={d}>{String(d).toUpperCase()}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {(voiceCloneTagFilter || voiceCloneDurationFilter) && (
+              <button
+                onClick={() => { setVoiceCloneTagFilter(''); setVoiceCloneDurationFilter(''); }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black hover:bg-red-500/20 transition-all shrink-0"
+              >
+                <X size={12} /> LIMPAR FILTROS
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           {isLoading && <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-[#FFD700]" size={48} /></div>}
@@ -566,7 +1032,7 @@ const MainApp: React.FC = () => {
                 </h1>
                 {activeCategory !== 'ALL' && (
                   <button 
-                    onClick={() => setActiveCategory('ALL')}
+                    onClick={() => { setNavStack([]); resetAllFilters(); setActiveCategory('ALL'); }}
                     className="flex items-center gap-2 text-[10px] font-black text-gray-500 hover:text-white transition-colors uppercase tracking-widest"
                   >
                     <X size={14} /> Fechar Filtro
