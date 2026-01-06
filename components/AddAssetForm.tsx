@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AssetCategory } from '../types';
+import { AssetCategory, Folder } from '../types';
 import { CATEGORIES_CONFIG } from '../constants';
 import { X, Save, Loader2, Info } from 'lucide-react';
 
@@ -9,9 +9,10 @@ interface AddAssetFormProps {
   onSave: (category: AssetCategory, data: any, id?: string) => void;
   initialData?: any;
   initialCategory?: AssetCategory;
+  folders?: Folder[];
 }
 
-const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialData, initialCategory }) => {
+const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialData, initialCategory, folders = [] }) => {
   const [category, setCategory] = useState<AssetCategory>(initialCategory || AssetCategory.DEEPFAKES);
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,14 +25,14 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
       const tags_string = Array.isArray(initialData.tags) ? initialData.tags.join(', ') : '';
       setFormData({ ...initialData, tags_string });
     } else {
-      setFormData({});
+      setFormData({ folder_id: null });
     }
   }, [initialData]);
 
   const handleCategoryChange = (newCat: AssetCategory) => {
     if (!isEditing) {
       setCategory(newCat);
-      setFormData({}); 
+      setFormData({ folder_id: null });
     }
   };
 
@@ -52,11 +53,28 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
     }
   };
 
+  const renderFolderSelect = () => (
+    <div className="space-y-2">
+      <label className="text-xs font-black uppercase tracking-widest text-gray-500">Pasta</label>
+      <select
+        className="w-full bg-[#111] border border-white/10 rounded-xl py-2.5 px-3 text-sm focus:border-[#FFD700] outline-none transition-all text-white"
+        value={formData.folder_id || ''}
+        onChange={(e) => setFormData((prev: any) => ({ ...prev, folder_id: e.target.value || null }))}
+      >
+        <option value="">Sem pasta</option>
+        {folders.map(f => (
+          <option key={f.id} value={f.id}>{f.name}</option>
+        ))}
+      </select>
+    </div>
+  );
+
   const renderFields = () => {
     switch (category) {
       case AssetCategory.DEEPFAKES:
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {renderFolderSelect()}
             <Input label="Personagem" name="personagem" value={formData.personagem} placeholder="Ex: Adele" onChange={handleChange} required />
             <div className="grid grid-cols-2 gap-4">
               <Input label="Duração" name="duracao" value={formData.duracao} placeholder="0:30" onChange={handleChange} />
@@ -69,6 +87,7 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
       case AssetCategory.VOICE_CLONES:
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {renderFolderSelect()}
             <Input label="Nome da Voz" name="voz_nome" value={formData.voz_nome} placeholder="Ex: Locutor Impactante" onChange={handleChange} required />
             <Input label="Duração do Sample" name="duracao" value={formData.duracao} placeholder="0:15" onChange={handleChange} />
             <Input label="Link Minimax / Download" name="link_minimax" value={formData.link_minimax} placeholder="Chave: link_minimax" onChange={handleChange} required />
@@ -77,6 +96,7 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
       case AssetCategory.ORIGINAL_VIDEOS:
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {renderFolderSelect()}
             <Input label="Nome do Vídeo Original" name="nome_video" value={formData.nome_video} placeholder="Ex: Entrevista Completa Adele" onChange={handleChange} required />
             <Input label="Link do Vídeo Bruto (Drive)" name="link_video_original" value={formData.link_video_original} placeholder="Chave: link_video_original" onChange={handleChange} required />
           </div>
@@ -84,6 +104,7 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
       case AssetCategory.TIKTOK:
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {renderFolderSelect()}
             <div className="grid grid-cols-2 gap-4">
               <Input label="Nicho" name="nicho" value={formData.nicho} placeholder="Ex: Motivacional" onChange={handleChange} />
               <Input label="Gênero / Estilo" name="genero" value={formData.genero} placeholder="Ex: Masculino" onChange={handleChange} />
@@ -96,6 +117,7 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
       case AssetCategory.SFX:
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {renderFolderSelect()}
             <Input label="Nome da Trilha" name="nome" value={formData.nome} placeholder="Ex: Inspiração Épica 01" onChange={handleChange} required />
             <div className="grid grid-cols-2 gap-4">
               <Input label="Momento da VSL" name="momento_vsl" value={formData.momento_vsl} placeholder="Ex: Abertura Dramática" onChange={handleChange} />
@@ -107,6 +129,7 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
       case AssetCategory.VEO3:
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {renderFolderSelect()}
             <Input label="Produto / Objeto do Insert" name="produto_insert" value={formData.produto_insert} placeholder="Ex: Pote de Suplemento" onChange={handleChange} required />
             <div className="grid grid-cols-2 gap-4">
               <Input label="Dimensão" name="dimensao" value={formData.dimensao} placeholder="1080x1920" onChange={handleChange} />
@@ -118,6 +141,7 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
       case AssetCategory.SOCIAL_PROOF:
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {renderFolderSelect()}
             <Input label="Nicho do Resultado" name="nicho" value={formData.nicho} placeholder="Ex: Emagrecimento" onChange={handleChange} />
             <Input label="Gênero do Cliente" name="genero" value={formData.genero} placeholder="Ex: HOMEM" onChange={handleChange} />
             <Input label="Link da Imagem (Print/Foto)" name="link_imagem" value={formData.link_imagem} placeholder="Chave: link_imagem" onChange={handleChange} required />
@@ -126,6 +150,7 @@ const AddAssetForm: React.FC<AddAssetFormProps> = ({ onClose, onSave, initialDat
       case AssetCategory.UGC_TESTIMONIALS:
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {renderFolderSelect()}
             <div className="grid grid-cols-2 gap-4">
               <Input label="Gênero do Ator" name="genero" value={formData.genero} placeholder="Ex: MULHER" onChange={handleChange} />
               <Input label="Faixa Etária" name="idade" value={formData.idade} placeholder="Ex: ADULTO" onChange={handleChange} />
