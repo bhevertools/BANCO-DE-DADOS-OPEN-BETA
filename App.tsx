@@ -94,7 +94,8 @@ const MainApp: React.FC = () => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isFoldersLoading, setIsFoldersLoading] = useState(false);
   const [folderViewMode, setFolderViewMode] = useState<'ROOT' | 'FOLDER'>('ROOT');
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  type ActiveFolder = { type: 'ROOT' } | { type: 'FOLDER'; id: string | 'ARCHIVED' };
+  const [activeFolder, setActiveFolder] = useState<ActiveFolder>({ type: 'ROOT' });
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
 
   // Audio Filters State
@@ -134,6 +135,8 @@ const MainApp: React.FC = () => {
   type ViewState = {
     activeCategory: AssetCategory | 'ALL';
     searchQuery: string;
+    folderViewMode: 'ROOT' | 'FOLDER';
+    activeFolder: ActiveFolder;
     filters: {
       vslMomentFilter: string;
       emotionFilter: string;
@@ -262,11 +265,6 @@ const MainApp: React.FC = () => {
     return folders.filter(f => f.category === activeTableName && !f.parent_id);
   }, [folders, activeTableName]);
 
-  const currentFolderName = useMemo(() => {
-    if (!currentFolderId) return null;
-    return folders.find(folder => folder.id === currentFolderId)?.name || null;
-  }, [currentFolderId, folders]);
-
   const handleCreateFolder = async (name: string) => {
     if (!activeTableName) return;
     if (!name || !name.trim()) return;
@@ -300,7 +298,10 @@ const MainApp: React.FC = () => {
       alert(`Erro ao deletar: ${error.message}`);
       return;
     }
-    if (currentFolderId === folderId) setCurrentFolderId(null);
+    if (activeFolder.type === 'FOLDER' && activeFolder.id === folderId) {
+      setActiveFolder({ type: 'ROOT' });
+      setFolderViewMode('ROOT');
+    }
     await fetchFolders();
   };
 
@@ -311,6 +312,23 @@ const MainApp: React.FC = () => {
     });
     return list.sort((a, b) => new Date((b.raw as any).created_at).getTime() - new Date((a.raw as any).created_at).getTime());
   }, [dbData]);
+
+  const folderHasMatchingAssets = useCallback((folderId: string | 'ARCHIVED') => {
+    return allAssets.some(a => {
+      const raw: any = a.raw;
+      const matchesFolder =
+        folderId === 'ARCHIVED'
+          ? raw.folder_id === null
+          : raw.folder_id === folderId;
+
+      if (!matchesFolder) return false;
+
+      return (
+        a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    });
+  }, [allAssets, searchQuery]);
 
   // Voice Map para Link de Voz
   const voiceMap = useMemo(() => {
@@ -333,6 +351,8 @@ const MainApp: React.FC = () => {
     return {
       activeCategory,
       searchQuery,
+      folderViewMode,
+      activeFolder,
       filters: {
         vslMomentFilter,
         emotionFilter,
@@ -359,6 +379,8 @@ const MainApp: React.FC = () => {
   }, [
     activeCategory,
     searchQuery,
+    folderViewMode,
+    activeFolder,
     vslMomentFilter,
     emotionFilter,
     activeTagFilter,
@@ -384,6 +406,8 @@ const MainApp: React.FC = () => {
   const restoreViewState = useCallback((state: ViewState) => {
     setActiveCategory(state.activeCategory);
     setSearchQuery(state.searchQuery);
+    setFolderViewMode(state.folderViewMode);
+    setActiveFolder(state.activeFolder);
 
     setVslMomentFilter(state.filters.vslMomentFilter);
     setEmotionFilter(state.filters.emotionFilter);
@@ -416,7 +440,7 @@ const MainApp: React.FC = () => {
     setActiveCategory(cat);
     setSearchQuery(searchTerm);
     setFolderViewMode('FOLDER');
-    setCurrentFolderId(null);
+    setActiveFolder({ type: 'ROOT' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -572,13 +596,12 @@ const MainApp: React.FC = () => {
 
     // Folder filter (only when a folder is selected)
     let matchesFolder = true;
-    if (activeCategory !== 'ALL' && folderViewMode === 'FOLDER') {
+    if (activeFolder.type === 'FOLDER') {
       const raw: any = a.raw;
-      if (currentFolderId) {
-        matchesFolder = raw.folder_id === currentFolderId;
-      } else {
-        matchesFolder = !raw.folder_id;
-      }
+      matchesFolder =
+        activeFolder.id === 'ARCHIVED'
+          ? raw.folder_id === null
+          : raw.folder_id === activeFolder.id;
     }
 
     return matchesCategory && matchesSearch && matchesAudioFilters && matchesTikTokFilters && matchesVeoFilters && matchesSocialProofFilters && matchesUgcFilters && matchesDeepfakesFilters && matchesVoiceCloneFilters && matchesFolder;
@@ -606,6 +629,13 @@ const MainApp: React.FC = () => {
     }
   };
 
+  const visibleFolders = useMemo(() => {
+    return foldersForActiveCategory.filter(f =>
+      searchQuery ? folderHasMatchingAssets(f.id) : true
+    );
+  }, [foldersForActiveCategory, searchQuery, folderHasMatchingAssets]);
+  const showArchivedCard = !searchQuery || folderHasMatchingAssets('ARCHIVED');
+
   if (showIntro) {
     return <IntroAnimation onComplete={() => setShowIntro(false)} />;
   }
@@ -622,7 +652,7 @@ const MainApp: React.FC = () => {
           setActiveCategory(cat);
           setSearchQuery('');
           setFolderViewMode('ROOT');
-          setCurrentFolderId(null);
+          setActiveFolder({ type: 'ROOT' });
         }}
       />
       
@@ -1085,7 +1115,11 @@ const MainApp: React.FC = () => {
                       label={cat.label}
                       count={categoryCounts[cat.id] || 0}
                       icon={cat.icon}
-                      onClick={() => { setActiveCategory(cat.id); setFolderViewMode('ROOT'); setCurrentFolderId(null); }}
+                      onClick={() => {
+                        setActiveCategory(cat.id);
+                        setFolderViewMode('ROOT');
+                        setActiveFolder({ type: 'ROOT' });
+                      }}
                     />
                   ))}
                   <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-white/10 opacity-60">
@@ -1136,7 +1170,13 @@ const MainApp: React.FC = () => {
                   )}
                   {activeCategory !== 'ALL' && (
                     <button 
-                      onClick={() => { setNavStack([]); resetAllFilters(); setActiveCategory('ALL'); setFolderViewMode('ROOT'); setCurrentFolderId(null); }}
+                      onClick={() => {
+                        setNavStack([]);
+                        resetAllFilters();
+                        setActiveCategory('ALL');
+                        setFolderViewMode('ROOT');
+                        setActiveFolder({ type: 'ROOT' });
+                      }}
                       className="flex items-center gap-2 text-[10px] font-black text-gray-500 hover:text-white transition-colors uppercase tracking-widest"
                     >
                       <X size={14} /> Fechar Filtro
@@ -1151,22 +1191,24 @@ const MainApp: React.FC = () => {
                     <div className="text-sm text-gray-500">Carregando pastas…</div>
                   )}
                   <div className="grid grid-cols-5 gap-6">
-                    <FolderCard
-                      folder={{ id: 'none', name: 'Sem pasta', category: '', created_at: '' }}
-                      onOpen={() => {
-                        setCurrentFolderId(null);
-                        setFolderViewMode('FOLDER');
-                      }}
-                      onRename={() => {}}
-                      onDelete={() => {}}
-                    />
+                    {showArchivedCard && (
+                      <FolderCard
+                        folder={{ id: 'ARCHIVED', name: 'Arquivados', category: '', created_at: '' }}
+                        onOpen={() => {
+                          setActiveFolder({ type: 'FOLDER', id: 'ARCHIVED' });
+                          setFolderViewMode('FOLDER');
+                        }}
+                        onRename={() => {}}
+                        onDelete={() => {}}
+                      />
+                    )}
 
-                    {foldersForActiveCategory.map(f => (
+                    {visibleFolders.map(f => (
                       <FolderCard
                         key={f.id}
                         folder={f}
                         onOpen={() => {
-                          setCurrentFolderId(f.id);
+                          setActiveFolder({ type: 'FOLDER', id: f.id });
                           setFolderViewMode('FOLDER');
                         }}
                         onRename={() => handleRenameFolder(f.id)}
@@ -1182,10 +1224,16 @@ const MainApp: React.FC = () => {
                   {activeCategory !== 'ALL' && (
                     <Breadcrumb
                       categoryLabel={activeCategory}
-                      folderName={currentFolderName || 'Sem pasta'}
+                      folderName={
+                        activeFolder.type === 'FOLDER'
+                          ? activeFolder.id === 'ARCHIVED'
+                            ? 'Arquivados'
+                            : folders.find(f => f.id === activeFolder.id)?.name
+                          : undefined
+                      }
                       onBack={() => {
                         setFolderViewMode('ROOT');
-                        setCurrentFolderId(null);
+                        setActiveFolder({ type: 'ROOT' });
                       }}
                     />
                   )}
