@@ -122,6 +122,14 @@ export interface UnifiedAsset {
   raw: TableAsset;
 }
 
+export interface Folder {
+  id: string;
+  created_at: string;
+  category: string;   // matches table name e.g. 'deepfakes', 'veo_assets'
+  name: string;
+  parent_id?: string | null;
+}
+
 export interface AIResponse {
   recommended_tags: string[];
   explanation: string;

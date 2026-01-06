@@ -4,15 +4,15 @@ import { AssetCategory } from './types';
 import { CATEGORIES_CONFIG } from './constants';
 
 const TABLE_SCHEMAS: Record<string, string[]> = {
-  'deepfakes': ['personagem', 'imagem_descritiva', 'duracao', 'versao', 'video_link', 'tags'],
-  'voice_clones': ['voz_nome', 'duracao', 'link_minimax', 'tags'],
-  'original_videos': ['nome_video', 'link_video_original', 'tags'],
-  'tiktok_assets': ['nicho', 'tipo', 'genero', 'link_video', 'tags'],
-  'musicas': ['nome', 'momento_vsl', 'emocao', 'link_audio', 'tags'],
-  'sfx': ['nome', 'momento_vsl', 'emocao', 'link_audio', 'tags'],
-  'veo_assets': ['produto_insert', 'dimensao', 'duracao', 'link_video', 'tags'],
-  'social_proof': ['nicho', 'genero', 'link_imagem', 'tags'],
-  'ugc_testimonials': ['genero', 'duracao', 'idade', 'link_video', 'tags']
+  'deepfakes': ['personagem', 'imagem_descritiva', 'duracao', 'versao', 'video_link', 'tags', 'folder_id'],
+  'voice_clones': ['voz_nome', 'duracao', 'link_minimax', 'tags', 'folder_id'],
+  'original_videos': ['nome_video', 'link_video_original', 'tags', 'folder_id'],
+  'tiktok_assets': ['nicho', 'tipo', 'genero', 'link_video', 'tags', 'folder_id'],
+  'musicas': ['nome', 'momento_vsl', 'emocao', 'link_audio', 'tags', 'folder_id'],
+  'sfx': ['nome', 'momento_vsl', 'emocao', 'link_audio', 'tags', 'folder_id'],
+  'veo_assets': ['produto_insert', 'dimensao', 'duracao', 'link_video', 'tags', 'folder_id'],
+  'social_proof': ['nicho', 'genero', 'link_imagem', 'tags', 'folder_id'],
+  'ugc_testimonials': ['genero', 'duracao', 'idade', 'link_video', 'tags', 'folder_id']
 };
 
 export const saveAsset = async (cat: AssetCategory, data: any, id?: string) => {

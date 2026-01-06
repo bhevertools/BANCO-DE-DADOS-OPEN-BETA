@@ -7,7 +7,7 @@ import AddAssetForm from './components/AddAssetForm';
 import AuthGate from './components/AuthGate';
 import LogoutButton from './components/LogoutButton';
 import { CATEGORIES_CONFIG } from './constants';
-import { AssetCategory, UnifiedAsset } from './types';
+import { AssetCategory, UnifiedAsset, Folder } from './types';
 import { supabase } from './lib/supabase';
 import { saveAsset, deleteAsset } from './actions';
 
@@ -86,6 +86,11 @@ const MainApp: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<{ asset: any, category: AssetCategory } | null>(null);
+
+  // Folders (Google Drive style)
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [isFoldersLoading, setIsFoldersLoading] = useState(false);
+  const [currentFolderIdByCategory, setCurrentFolderIdByCategory] = useState<Record<string, string | null>>({});
 
   // Audio Filters State
   const [vslMomentFilter, setVslMomentFilter] = useState('');
@@ -171,7 +176,25 @@ const MainApp: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const fetchFolders = useCallback(async () => {
+    setIsFoldersLoading(true);
+    try {
+      const { data, error } = await supabase.from('folders').select('*').order('name', { ascending: true });
+      if (error) {
+        console.error('Erro ao carregar pastas:', error);
+        setFolders([]);
+      } else {
+        setFolders((data || []) as Folder[]);
+      }
+    } catch (err) {
+      console.error('Erro fatal no fetchFolders:', err);
+      setFolders([]);
+    } finally {
+      setIsFoldersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); fetchFolders(); }, [fetchData, fetchFolders]);
 
   const resetAllFilters = useCallback(() => {
     setVslMomentFilter('');
@@ -222,6 +245,63 @@ const MainApp: React.FC = () => {
       case AssetCategory.UGC_TESTIMONIALS: return { id: item.id, title: `UGC: ${item.genero}`, subtitle: item.idade, imageUrl: '', link: item.link_video, duration: item.duracao, category: catId, assetType: 'video', tags: item.tags || [], raw: item };
       default: return { id: item.id, title: 'Asset', subtitle: '', imageUrl: '', link: '', category: catId, assetType: 'other', tags: [], raw: item };
     }
+  };
+
+  const activeTableName = useMemo(() => {
+    const cfg = CATEGORIES_CONFIG.find(c => c.id === activeCategory);
+    return cfg?.table || null;
+  }, [activeCategory]);
+
+  const foldersForActiveCategory = useMemo(() => {
+    if (!activeTableName) return [];
+    return folders.filter(f => f.category === activeTableName && !f.parent_id);
+  }, [folders, activeTableName]);
+
+  const currentFolderId = useMemo(() => {
+    if (activeCategory === 'ALL') return null;
+    return currentFolderIdByCategory[String(activeCategory)] ?? null;
+  }, [activeCategory, currentFolderIdByCategory]);
+
+  const setCurrentFolder = (folderId: string | null) => {
+    if (activeCategory === 'ALL') return;
+    setCurrentFolderIdByCategory(prev => ({ ...prev, [String(activeCategory)]: folderId }));
+  };
+
+  const handleCreateFolder = async () => {
+    if (!activeTableName) return;
+    const name = window.prompt('Nome da nova pasta:');
+    if (!name || !name.trim()) return;
+    const { error } = await supabase.from('folders').insert([{ category: activeTableName, name: name.trim(), parent_id: null }]);
+    if (error) {
+      alert(`Erro ao criar pasta: ${error.message}`);
+      return;
+    }
+    await fetchFolders();
+  };
+
+  const handleRenameFolder = async (folderId: string) => {
+    const f = folders.find(x => x.id === folderId);
+    const next = window.prompt('Novo nome da pasta:', f?.name || '');
+    if (!next || !next.trim()) return;
+    const { error } = await supabase.from('folders').update({ name: next.trim() }).eq('id', folderId);
+    if (error) {
+      alert(`Erro ao renomear: ${error.message}`);
+      return;
+    }
+    await fetchFolders();
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    const f = folders.find(x => x.id === folderId);
+    const ok = window.confirm(`Deletar a pasta "${f?.name}"?\n\nOs itens dentro ficarão como "Sem pasta".`);
+    if (!ok) return;
+    const { error } = await supabase.from('folders').delete().eq('id', folderId);
+    if (error) {
+      alert(`Erro ao deletar: ${error.message}`);
+      return;
+    }
+    if (currentFolderId === folderId) setCurrentFolder(null);
+    await fetchFolders();
   };
 
   const allAssets = useMemo(() => {
@@ -488,7 +568,14 @@ const MainApp: React.FC = () => {
       if (voiceCloneTagFilter && !a.tags.includes(voiceCloneTagFilter)) matchesVoiceCloneFilters = false;
     }
 
-    return matchesCategory && matchesSearch && matchesAudioFilters && matchesTikTokFilters && matchesVeoFilters && matchesSocialProofFilters && matchesUgcFilters && matchesDeepfakesFilters && matchesVoiceCloneFilters;
+    // Folder filter (only when a folder is selected)
+    let matchesFolder = true;
+    if (activeCategory !== 'ALL' && currentFolderId) {
+      const raw: any = a.raw;
+      matchesFolder = raw.folder_id === currentFolderId;
+    }
+
+    return matchesCategory && matchesSearch && matchesAudioFilters && matchesTikTokFilters && matchesVeoFilters && matchesSocialProofFilters && matchesUgcFilters && matchesDeepfakesFilters && matchesVoiceCloneFilters && matchesFolder;
   });
 
   const handleSave = async (cat: AssetCategory, data: any, id?: string) => {
@@ -957,6 +1044,74 @@ const MainApp: React.FC = () => {
           </div>
         )}
 
+        {/* Folder Navigation Bar (Drive style) */}
+        {activeCategory !== 'ALL' && activeTableName && (
+          <div className="bg-[#050505] border-b border-white/5 px-8 py-3 flex items-center justify-between gap-6">
+            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
+              <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                Pastas
+              </div>
+
+              <button
+                onClick={() => setCurrentFolder(null)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all shrink-0 ${
+                  !currentFolderId ? 'bg-white text-black border-white' : 'bg-black text-gray-400 border-white/10 hover:text-white'
+                }`}
+                title="Mostrar todos os ativos (sem filtrar por pasta)"
+              >
+                Todas
+              </button>
+
+              <button
+                onClick={() => setSearchQuery('')}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/10 bg-black text-gray-400 hover:text-white transition-all shrink-0"
+                title="Limpar busca"
+              >
+                Limpar busca
+              </button>
+
+              {foldersForActiveCategory.map(f => (
+                <div key={f.id} className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setCurrentFolder(f.id)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
+                      currentFolderId === f.id ? 'bg-[#FFD700] text-black border-[#FFD700]' : 'bg-black text-gray-400 border-white/10 hover:text-white'
+                    }`}
+                    title="Abrir pasta"
+                  >
+                    {f.name}
+                  </button>
+                  <button
+                    onClick={() => handleRenameFolder(f.id)}
+                    className="px-2 py-1.5 rounded-lg border border-white/10 bg-black text-gray-500 hover:text-white transition-all"
+                    title="Renomear"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    onClick={() => handleDeleteFolder(f.id)}
+                    className="px-2 py-1.5 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
+                    title="Deletar"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+
+              {isFoldersLoading && (
+                <span className="text-[10px] text-gray-500 uppercase tracking-widest">Carregando pastas…</span>
+              )}
+            </div>
+
+            <button
+              onClick={handleCreateFolder}
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shrink-0"
+            >
+              + Nova pasta
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           {isLoading && <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-[#FFD700]" size={48} /></div>}
           
@@ -1071,6 +1226,7 @@ const MainApp: React.FC = () => {
           onSave={handleSave} 
           initialData={editingAsset?.asset} 
           initialCategory={editingAsset?.category || (activeCategory !== 'ALL' ? activeCategory : undefined)} 
+          folders={activeTableName ? folders.filter(f => f.category === activeTableName && !f.parent_id) : []}
         />
       )}
     </div>
