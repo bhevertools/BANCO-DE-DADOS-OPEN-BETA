@@ -6,6 +6,9 @@ import AssetCard from './components/AssetCard';
 import AddAssetForm from './components/AddAssetForm';
 import AuthGate from './components/AuthGate';
 import LogoutButton from './components/LogoutButton';
+import FolderCard from './components/FolderCard';
+import Breadcrumb from './components/Breadcrumb';
+import CreateFolderModal from './components/CreateFolderModal';
 import { CATEGORIES_CONFIG } from './constants';
 import { AssetCategory, UnifiedAsset, Folder } from './types';
 import { supabase } from './lib/supabase';
@@ -90,7 +93,9 @@ const MainApp: React.FC = () => {
   // Folders (Google Drive style)
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isFoldersLoading, setIsFoldersLoading] = useState(false);
-  const [currentFolderIdByCategory, setCurrentFolderIdByCategory] = useState<Record<string, string | null>>({});
+  const [folderViewMode, setFolderViewMode] = useState<'ROOT' | 'FOLDER'>('ROOT');
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
 
   // Audio Filters State
   const [vslMomentFilter, setVslMomentFilter] = useState('');
@@ -257,25 +262,20 @@ const MainApp: React.FC = () => {
     return folders.filter(f => f.category === activeTableName && !f.parent_id);
   }, [folders, activeTableName]);
 
-  const currentFolderId = useMemo(() => {
-    if (activeCategory === 'ALL') return null;
-    return currentFolderIdByCategory[String(activeCategory)] ?? null;
-  }, [activeCategory, currentFolderIdByCategory]);
+  const currentFolderName = useMemo(() => {
+    if (!currentFolderId) return null;
+    return folders.find(folder => folder.id === currentFolderId)?.name || null;
+  }, [currentFolderId, folders]);
 
-  const setCurrentFolder = (folderId: string | null) => {
-    if (activeCategory === 'ALL') return;
-    setCurrentFolderIdByCategory(prev => ({ ...prev, [String(activeCategory)]: folderId }));
-  };
-
-  const handleCreateFolder = async () => {
+  const handleCreateFolder = async (name: string) => {
     if (!activeTableName) return;
-    const name = window.prompt('Nome da nova pasta:');
     if (!name || !name.trim()) return;
     const { error } = await supabase.from('folders').insert([{ category: activeTableName, name: name.trim(), parent_id: null }]);
     if (error) {
       alert(`Erro ao criar pasta: ${error.message}`);
       return;
     }
+    setShowCreateFolderModal(false);
     await fetchFolders();
   };
 
@@ -300,7 +300,7 @@ const MainApp: React.FC = () => {
       alert(`Erro ao deletar: ${error.message}`);
       return;
     }
-    if (currentFolderId === folderId) setCurrentFolder(null);
+    if (currentFolderId === folderId) setCurrentFolderId(null);
     await fetchFolders();
   };
 
@@ -415,6 +415,8 @@ const MainApp: React.FC = () => {
     resetAllFilters();
     setActiveCategory(cat);
     setSearchQuery(searchTerm);
+    setFolderViewMode('FOLDER');
+    setCurrentFolderId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -570,9 +572,13 @@ const MainApp: React.FC = () => {
 
     // Folder filter (only when a folder is selected)
     let matchesFolder = true;
-    if (activeCategory !== 'ALL' && currentFolderId) {
+    if (activeCategory !== 'ALL' && folderViewMode === 'FOLDER') {
       const raw: any = a.raw;
-      matchesFolder = raw.folder_id === currentFolderId;
+      if (currentFolderId) {
+        matchesFolder = raw.folder_id === currentFolderId;
+      } else {
+        matchesFolder = !raw.folder_id;
+      }
     }
 
     return matchesCategory && matchesSearch && matchesAudioFilters && matchesTikTokFilters && matchesVeoFilters && matchesSocialProofFilters && matchesUgcFilters && matchesDeepfakesFilters && matchesVoiceCloneFilters && matchesFolder;
@@ -615,6 +621,8 @@ const MainApp: React.FC = () => {
           resetAllFilters();
           setActiveCategory(cat);
           setSearchQuery('');
+          setFolderViewMode('ROOT');
+          setCurrentFolderId(null);
         }}
       />
       
@@ -1044,74 +1052,6 @@ const MainApp: React.FC = () => {
           </div>
         )}
 
-        {/* Folder Navigation Bar (Drive style) */}
-        {activeCategory !== 'ALL' && activeTableName && (
-          <div className="bg-[#050505] border-b border-white/5 px-8 py-3 flex items-center justify-between gap-6">
-            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
-              <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                Pastas
-              </div>
-
-              <button
-                onClick={() => setCurrentFolder(null)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all shrink-0 ${
-                  !currentFolderId ? 'bg-white text-black border-white' : 'bg-black text-gray-400 border-white/10 hover:text-white'
-                }`}
-                title="Mostrar todos os ativos (sem filtrar por pasta)"
-              >
-                Todas
-              </button>
-
-              <button
-                onClick={() => setSearchQuery('')}
-                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/10 bg-black text-gray-400 hover:text-white transition-all shrink-0"
-                title="Limpar busca"
-              >
-                Limpar busca
-              </button>
-
-              {foldersForActiveCategory.map(f => (
-                <div key={f.id} className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => setCurrentFolder(f.id)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
-                      currentFolderId === f.id ? 'bg-[#FFD700] text-black border-[#FFD700]' : 'bg-black text-gray-400 border-white/10 hover:text-white'
-                    }`}
-                    title="Abrir pasta"
-                  >
-                    {f.name}
-                  </button>
-                  <button
-                    onClick={() => handleRenameFolder(f.id)}
-                    className="px-2 py-1.5 rounded-lg border border-white/10 bg-black text-gray-500 hover:text-white transition-all"
-                    title="Renomear"
-                  >
-                    ✎
-                  </button>
-                  <button
-                    onClick={() => handleDeleteFolder(f.id)}
-                    className="px-2 py-1.5 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
-                    title="Deletar"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-
-              {isFoldersLoading && (
-                <span className="text-[10px] text-gray-500 uppercase tracking-widest">Carregando pastas…</span>
-              )}
-            </div>
-
-            <button
-              onClick={handleCreateFolder}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shrink-0"
-            >
-              + Nova pasta
-            </button>
-          </div>
-        )}
-
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           {isLoading && <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-[#FFD700]" size={48} /></div>}
           
@@ -1145,7 +1085,7 @@ const MainApp: React.FC = () => {
                       label={cat.label}
                       count={categoryCounts[cat.id] || 0}
                       icon={cat.icon}
-                      onClick={() => setActiveCategory(cat.id)}
+                      onClick={() => { setActiveCategory(cat.id); setFolderViewMode('ROOT'); setCurrentFolderId(null); }}
                     />
                   ))}
                   <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-white/10 opacity-60">
@@ -1185,36 +1125,94 @@ const MainApp: React.FC = () => {
                   {searchQuery ? `RESULTADOS PARA: "${searchQuery.toUpperCase()}"` : CATEGORIES_CONFIG.find(c => c.id === activeCategory)?.label.toUpperCase()}
                   <span className="ml-3 text-sm text-gray-600 font-bold tracking-normal">({filtered.length} ATIVOS)</span>
                 </h1>
-                {activeCategory !== 'ALL' && (
-                  <button 
-                    onClick={() => { setNavStack([]); resetAllFilters(); setActiveCategory('ALL'); }}
-                    className="flex items-center gap-2 text-[10px] font-black text-gray-500 hover:text-white transition-colors uppercase tracking-widest"
-                  >
-                    <X size={14} /> Fechar Filtro
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {activeCategory !== 'ALL' && (
+                    <button
+                      onClick={() => setShowCreateFolderModal(true)}
+                      className="flex items-center gap-2 text-[10px] font-black text-gray-500 hover:text-white transition-colors uppercase tracking-widest"
+                    >
+                      <Plus size={14} /> Nova pasta
+                    </button>
+                  )}
+                  {activeCategory !== 'ALL' && (
+                    <button 
+                      onClick={() => { setNavStack([]); resetAllFilters(); setActiveCategory('ALL'); setFolderViewMode('ROOT'); setCurrentFolderId(null); }}
+                      className="flex items-center gap-2 text-[10px] font-black text-gray-500 hover:text-white transition-colors uppercase tracking-widest"
+                    >
+                      <X size={14} /> Fechar Filtro
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-                {filtered.map(asset => (
-                  <AssetCard 
-                    key={asset.id} 
-                    asset={asset} 
-                    onEdit={a => { setEditingAsset({asset: a.raw, category: a.category}); setIsAddFormOpen(true); }} 
-                    onDelete={handleDelete}
-                    onViewRelated={handleViewRelated}
-                    hasRelatedVoice={voiceMap.has(asset.title.toLowerCase())}
-                    hasRelatedOriginal={originalVideoMap.has(asset.title.toLowerCase())}
-                  />
-                ))}
-              </div>
+              {activeCategory !== 'ALL' && folderViewMode === 'ROOT' && (
+                <div className="space-y-6">
+                  {isFoldersLoading && (
+                    <div className="text-sm text-gray-500">Carregando pastas…</div>
+                  )}
+                  <div className="grid grid-cols-5 gap-6">
+                    <FolderCard
+                      folder={{ id: 'none', name: 'Sem pasta', category: '', created_at: '' }}
+                      onOpen={() => {
+                        setCurrentFolderId(null);
+                        setFolderViewMode('FOLDER');
+                      }}
+                      onRename={() => {}}
+                      onDelete={() => {}}
+                    />
 
-              {filtered.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-32 text-gray-600">
-                  <LayoutGrid size={64} strokeWidth={1} className="mb-4 opacity-10" />
-                  <p className="font-bold uppercase tracking-widest text-[10px]">Nenhum ativo encontrado</p>
+                    {foldersForActiveCategory.map(f => (
+                      <FolderCard
+                        key={f.id}
+                        folder={f}
+                        onOpen={() => {
+                          setCurrentFolderId(f.id);
+                          setFolderViewMode('FOLDER');
+                        }}
+                        onRename={() => handleRenameFolder(f.id)}
+                        onDelete={() => handleDeleteFolder(f.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {(activeCategory === 'ALL' || folderViewMode === 'FOLDER') && (
+                <>
+                  {activeCategory !== 'ALL' && (
+                    <Breadcrumb
+                      categoryLabel={activeCategory}
+                      folderName={currentFolderName || 'Sem pasta'}
+                      onBack={() => {
+                        setFolderViewMode('ROOT');
+                        setCurrentFolderId(null);
+                      }}
+                    />
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                    {filtered.map(asset => (
+                      <AssetCard 
+                        key={asset.id} 
+                        asset={asset} 
+                        onEdit={a => { setEditingAsset({asset: a.raw, category: a.category}); setIsAddFormOpen(true); }} 
+                        onDelete={handleDelete}
+                        onViewRelated={handleViewRelated}
+                        hasRelatedVoice={voiceMap.has(asset.title.toLowerCase())}
+                        hasRelatedOriginal={originalVideoMap.has(asset.title.toLowerCase())}
+                      />
+                    ))}
+                  </div>
+
+                  {filtered.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-32 text-gray-600">
+                      <LayoutGrid size={64} strokeWidth={1} className="mb-4 opacity-10" />
+                      <p className="font-bold uppercase tracking-widest text-[10px]">Nenhum ativo encontrado</p>
+                    </div>
+                  )}
+                </>
+              )}
+
             </div>
           )}
         </div>
@@ -1227,6 +1225,13 @@ const MainApp: React.FC = () => {
           initialData={editingAsset?.asset} 
           initialCategory={editingAsset?.category || (activeCategory !== 'ALL' ? activeCategory : undefined)} 
           folders={activeTableName ? folders.filter(f => f.category === activeTableName && !f.parent_id) : []}
+        />
+      )}
+
+      {showCreateFolderModal && (
+        <CreateFolderModal
+          onClose={() => setShowCreateFolderModal(false)}
+          onCreate={handleCreateFolder}
         />
       )}
     </div>
