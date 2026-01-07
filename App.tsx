@@ -1090,13 +1090,18 @@ const MainApp: React.FC = () => {
               <section className="relative overflow-hidden rounded-3xl bg-[#080808] border border-white/5 p-12 flex flex-col items-center text-center">
                 <div className="absolute inset-0 bg-gradient-to-b from-[#FFD700]/5 to-transparent opacity-50" />
                 <div className="relative z-10 max-w-3xl">
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFD700]/10 border border-[#FFD700]/20 text-[#FFD700] text-[10px] font-black tracking-[0.2em] uppercase mb-8">
-                    <Zap size={14} /> BIBLIOTECA OFICIAL
+                  <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFD700]/10 text-[#FFD700] text-xs font-black tracking-widest uppercase mb-8">
+                    HUB OFICIAL
+                  </span>
+                  <div className="text-center space-y-4">
+                    <h1 className="text-5xl md:text-6xl font-black tracking-tight text-[#FFD700]">
+                      BH•HUB
+                    </h1>
+
+                    <h2 className="text-xl md:text-2xl font-medium text-white/90">
+                      Central de Inteligência de VSL
+                    </h2>
                   </div>
-                  <h1 className="text-4xl md:text-6xl font-black text-white leading-tight mb-6 uppercase tracking-tighter">
-                    BEM VINDO AO BANCO DE DADOS <br />
-                    <span className="text-[#FFD700] drop-shadow-[0_0_15px_rgba(255,215,0,0.3)]">SQUAD VSL BHEVER</span>
-                  </h1>
                   <p className="text-gray-400 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto italic">
                     Acervo centralizado de ativos de alta performance. Encontre Deepfakes, UGCs, e áudios exclusivos selecionados para elevar o nível das suas edições.
                   </p>
