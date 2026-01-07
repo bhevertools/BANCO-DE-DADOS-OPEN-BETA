@@ -18,13 +18,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, onCategoryChange }) =
           onClick={() => onCategoryChange('ALL')}
           className="cursor-pointer group mb-12"
         >
-          <div className="flex flex-col">
-            <span className="text-2xl font-black text-white tracking-tighter group-hover:text-[#FFD700] transition-colors">
-              BH<span className="text-[#FFD700]">•</span>EVER
-            </span>
-            <span className="text-[10px] font-black text-[#FFD700]/60 tracking-[0.3em] uppercase">
-              SQUAD VSL
-            </span>
+          <div className="text-white font-black text-xl tracking-tight">
+            BH•HUB
           </div>
         </div>
 
