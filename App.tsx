@@ -94,7 +94,7 @@ const MainApp: React.FC = () => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isFoldersLoading, setIsFoldersLoading] = useState(false);
   const [folderViewMode, setFolderViewMode] = useState<'ROOT' | 'FOLDER'>('ROOT');
-  type ActiveFolder = { type: 'ROOT' } | { type: 'FOLDER'; id: string | 'ARCHIVED' };
+  type ActiveFolder = { type: 'ROOT' } | { type: 'FOLDER'; id: string | 'RAW' };
   const [activeFolder, setActiveFolder] = useState<ActiveFolder>({ type: 'ROOT' });
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
 
@@ -313,23 +313,6 @@ const MainApp: React.FC = () => {
     return list.sort((a, b) => new Date((b.raw as any).created_at).getTime() - new Date((a.raw as any).created_at).getTime());
   }, [dbData]);
 
-  const folderHasMatchingAssets = useCallback((folderId: string | 'ARCHIVED') => {
-    return allAssets.some(a => {
-      const raw: any = a.raw;
-      const matchesFolder =
-        folderId === 'ARCHIVED'
-          ? raw.folder_id === null
-          : raw.folder_id === folderId;
-
-      if (!matchesFolder) return false;
-
-      return (
-        a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    });
-  }, [allAssets, searchQuery]);
-
   // Voice Map para Link de Voz
   const voiceMap = useMemo(() => {
     const map = new Set<string>();
@@ -346,6 +329,120 @@ const MainApp: React.FC = () => {
     });
     return map;
   }, [allAssets]);
+
+  const assetMatchesFilters = useCallback((
+    asset: UnifiedAsset,
+    search: string
+  ) => {
+    const text = (
+      asset.title +
+      ' ' +
+      asset.tags.join(' ')
+    ).toLowerCase();
+
+    if (search && !text.includes(search.toLowerCase())) {
+      return false;
+    }
+
+    const matchesCategory = activeCategory === 'ALL' || asset.category === activeCategory;
+
+    let matchesAudioFilters = true;
+    if (activeCategory === AssetCategory.MUSIC || activeCategory === AssetCategory.SFX) {
+      const raw = asset.raw as any;
+      if (vslMomentFilter && raw.momento_vsl !== vslMomentFilter) matchesAudioFilters = false;
+      if (emotionFilter && raw.emocao !== emotionFilter) matchesAudioFilters = false;
+      if (activeTagFilter && !asset.tags.includes(activeTagFilter)) matchesAudioFilters = false;
+    }
+
+    let matchesTikTokFilters = true;
+    if (activeCategory === AssetCategory.TIKTOK) {
+      const raw = asset.raw as any;
+      if (tiktokNichoFilter && raw.nicho !== tiktokNichoFilter) matchesTikTokFilters = false;
+      if (tiktokGeneroFilter && raw.genero !== tiktokGeneroFilter) matchesTikTokFilters = false;
+      if (tiktokTipoFilter && raw.tipo !== tiktokTipoFilter) matchesTikTokFilters = false;
+    }
+
+    let matchesVeoFilters = true;
+    if (activeCategory === AssetCategory.VEO3) {
+      const raw = asset.raw as any;
+      if (veoProdutoFilter && raw.produto_insert !== veoProdutoFilter) matchesVeoFilters = false;
+      if (veoDimensaoFilter && raw.dimensao !== veoDimensaoFilter) matchesVeoFilters = false;
+      if (veoTagFilter && !asset.tags.includes(veoTagFilter)) matchesVeoFilters = false;
+    }
+
+    let matchesSocialProofFilters = true;
+    if (activeCategory === AssetCategory.SOCIAL_PROOF) {
+      const raw = asset.raw as any;
+      if (socialProofNichoFilter && raw.nicho !== socialProofNichoFilter) matchesSocialProofFilters = false;
+      if (socialProofGeneroFilter && raw.genero !== socialProofGeneroFilter) matchesSocialProofFilters = false;
+    }
+
+    let matchesUgcFilters = true;
+    if (activeCategory === AssetCategory.UGC_TESTIMONIALS) {
+      const raw = asset.raw as any;
+      if (ugcGeneroFilter && raw.genero !== ugcGeneroFilter) matchesUgcFilters = false;
+      if (ugcFaixaEtariaFilter && raw.idade !== ugcFaixaEtariaFilter) matchesUgcFilters = false;
+    }
+
+    let matchesDeepfakesFilters = true;
+    if (activeCategory === AssetCategory.DEEPFAKES) {
+      const raw = asset.raw as any;
+      if (deepfakesPersonagemFilter && raw.personagem !== deepfakesPersonagemFilter) matchesDeepfakesFilters = false;
+      if (deepfakesVersaoFilter && raw.versao !== deepfakesVersaoFilter) matchesDeepfakesFilters = false;
+      if (deepfakesTagFilter && !asset.tags.includes(deepfakesTagFilter)) matchesDeepfakesFilters = false;
+      if (deepfakesOnlyWithVoice && !voiceMap.has(asset.title.toLowerCase())) matchesDeepfakesFilters = false;
+      if (deepfakesOnlyWithOriginal && !originalVideoMap.has(asset.title.toLowerCase())) matchesDeepfakesFilters = false;
+    }
+
+    let matchesVoiceCloneFilters = true;
+    if (activeCategory === AssetCategory.VOICE_CLONES) {
+      const raw = asset.raw as any;
+      if (voiceCloneDurationFilter && raw.duracao !== voiceCloneDurationFilter) matchesVoiceCloneFilters = false;
+      if (voiceCloneTagFilter && !asset.tags.includes(voiceCloneTagFilter)) matchesVoiceCloneFilters = false;
+    }
+
+    // reaproveita TODOS os filtros já existentes
+    return matchesCategory && matchesAudioFilters && matchesTikTokFilters && matchesVeoFilters && matchesSocialProofFilters && matchesUgcFilters && matchesDeepfakesFilters && matchesVoiceCloneFilters;
+  }, [
+    activeCategory,
+    activeTagFilter,
+    deepfakesOnlyWithOriginal,
+    deepfakesOnlyWithVoice,
+    deepfakesPersonagemFilter,
+    deepfakesTagFilter,
+    deepfakesVersaoFilter,
+    emotionFilter,
+    originalVideoMap,
+    socialProofGeneroFilter,
+    socialProofNichoFilter,
+    tiktokGeneroFilter,
+    tiktokNichoFilter,
+    tiktokTipoFilter,
+    ugcFaixaEtariaFilter,
+    ugcGeneroFilter,
+    veoDimensaoFilter,
+    veoProdutoFilter,
+    veoTagFilter,
+    voiceCloneDurationFilter,
+    voiceCloneTagFilter,
+    voiceMap,
+    vslMomentFilter,
+  ]);
+
+  const countAssetsInFolder = useCallback((folderId: string | 'RAW') => {
+    return allAssets.filter(a => {
+      const raw: any = a.raw;
+
+      const matchesFolder =
+        folderId === 'RAW'
+          ? raw.folder_id === null
+          : raw.folder_id === folderId;
+
+      if (!matchesFolder) return false;
+
+      return assetMatchesFilters(a, searchQuery);
+    }).length;
+  }, [allAssets, assetMatchesFilters, searchQuery]);
 
   const getCurrentViewState = useCallback((): ViewState => {
     return {
@@ -535,76 +632,16 @@ const MainApp: React.FC = () => {
   }, [dbData, activeCategory]);
 
   const filtered = allAssets.filter(a => {
-    const matchesCategory = activeCategory === 'ALL' || a.category === activeCategory;
-    const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          a.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    let matchesAudioFilters = true;
-    if (activeCategory === AssetCategory.MUSIC || activeCategory === AssetCategory.SFX) {
-      const raw = a.raw as any;
-      if (vslMomentFilter && raw.momento_vsl !== vslMomentFilter) matchesAudioFilters = false;
-      if (emotionFilter && raw.emocao !== emotionFilter) matchesAudioFilters = false;
-      if (activeTagFilter && !a.tags.includes(activeTagFilter)) matchesAudioFilters = false;
-    }
-
-    let matchesTikTokFilters = true;
-    if (activeCategory === AssetCategory.TIKTOK) {
-      const raw = a.raw as any;
-      if (tiktokNichoFilter && raw.nicho !== tiktokNichoFilter) matchesTikTokFilters = false;
-      if (tiktokGeneroFilter && raw.genero !== tiktokGeneroFilter) matchesTikTokFilters = false;
-      if (tiktokTipoFilter && raw.tipo !== tiktokTipoFilter) matchesTikTokFilters = false;
-    }
-
-    let matchesVeoFilters = true;
-    if (activeCategory === AssetCategory.VEO3) {
-      const raw = a.raw as any;
-      if (veoProdutoFilter && raw.produto_insert !== veoProdutoFilter) matchesVeoFilters = false;
-      if (veoDimensaoFilter && raw.dimensao !== veoDimensaoFilter) matchesVeoFilters = false;
-      if (veoTagFilter && !a.tags.includes(veoTagFilter)) matchesVeoFilters = false;
-    }
-
-    let matchesSocialProofFilters = true;
-    if (activeCategory === AssetCategory.SOCIAL_PROOF) {
-      const raw = a.raw as any;
-      if (socialProofNichoFilter && raw.nicho !== socialProofNichoFilter) matchesSocialProofFilters = false;
-      if (socialProofGeneroFilter && raw.genero !== socialProofGeneroFilter) matchesSocialProofFilters = false;
-    }
-
-    let matchesUgcFilters = true;
-    if (activeCategory === AssetCategory.UGC_TESTIMONIALS) {
-      const raw = a.raw as any;
-      if (ugcGeneroFilter && raw.genero !== ugcGeneroFilter) matchesUgcFilters = false;
-      if (ugcFaixaEtariaFilter && raw.idade !== ugcFaixaEtariaFilter) matchesUgcFilters = false;
-    }
-
-    let matchesDeepfakesFilters = true;
-    if (activeCategory === AssetCategory.DEEPFAKES) {
-      const raw = a.raw as any;
-      if (deepfakesPersonagemFilter && raw.personagem !== deepfakesPersonagemFilter) matchesDeepfakesFilters = false;
-      if (deepfakesVersaoFilter && raw.versao !== deepfakesVersaoFilter) matchesDeepfakesFilters = false;
-      if (deepfakesTagFilter && !a.tags.includes(deepfakesTagFilter)) matchesDeepfakesFilters = false;
-      if (deepfakesOnlyWithVoice && !voiceMap.has(a.title.toLowerCase())) matchesDeepfakesFilters = false;
-      if (deepfakesOnlyWithOriginal && !originalVideoMap.has(a.title.toLowerCase())) matchesDeepfakesFilters = false;
-    }
-
-    let matchesVoiceCloneFilters = true;
-    if (activeCategory === AssetCategory.VOICE_CLONES) {
-      const raw = a.raw as any;
-      if (voiceCloneDurationFilter && raw.duracao !== voiceCloneDurationFilter) matchesVoiceCloneFilters = false;
-      if (voiceCloneTagFilter && !a.tags.includes(voiceCloneTagFilter)) matchesVoiceCloneFilters = false;
-    }
-
-    // Folder filter (only when a folder is selected)
     let matchesFolder = true;
     if (activeFolder.type === 'FOLDER') {
       const raw: any = a.raw;
       matchesFolder =
-        activeFolder.id === 'ARCHIVED'
+        activeFolder.id === 'RAW'
           ? raw.folder_id === null
           : raw.folder_id === activeFolder.id;
     }
 
-    return matchesCategory && matchesSearch && matchesAudioFilters && matchesTikTokFilters && matchesVeoFilters && matchesSocialProofFilters && matchesUgcFilters && matchesDeepfakesFilters && matchesVoiceCloneFilters && matchesFolder;
+    return matchesFolder && assetMatchesFilters(a, searchQuery);
   });
 
   const handleSave = async (cat: AssetCategory, data: any, id?: string) => {
@@ -630,11 +667,11 @@ const MainApp: React.FC = () => {
   };
 
   const visibleFolders = useMemo(() => {
-    return foldersForActiveCategory.filter(f =>
-      searchQuery ? folderHasMatchingAssets(f.id) : true
+    return foldersForActiveCategory.filter(folder =>
+      countAssetsInFolder(folder.id) > 0
     );
-  }, [foldersForActiveCategory, searchQuery, folderHasMatchingAssets]);
-  const showArchivedCard = !searchQuery || folderHasMatchingAssets('ARCHIVED');
+  }, [foldersForActiveCategory, countAssetsInFolder]);
+  const rawAssetsCount = countAssetsInFolder('RAW');
 
   if (showIntro) {
     return <IntroAnimation onComplete={() => setShowIntro(false)} />;
@@ -1196,15 +1233,20 @@ const MainApp: React.FC = () => {
                     <div className="text-sm text-gray-500">Carregando pastas…</div>
                   )}
                   <div className="grid grid-cols-5 gap-6">
-                    {showArchivedCard && (
+                    {rawAssetsCount > 0 && (
                       <FolderCard
-                        folder={{ id: 'ARCHIVED', name: 'Arquivados', category: '', created_at: '' }}
+                        folder={{
+                          id: 'RAW',
+                          name: 'Raw Assets',
+                          category: '',
+                          created_at: ''
+                        }}
+                        count={rawAssetsCount}
                         onOpen={() => {
-                          setActiveFolder({ type: 'FOLDER', id: 'ARCHIVED' });
+                          setActiveFolder({ type: 'FOLDER', id: 'RAW' });
                           setFolderViewMode('FOLDER');
                         }}
-                        onRename={() => {}}
-                        onDelete={() => {}}
+                        locked
                       />
                     )}
 
@@ -1212,6 +1254,7 @@ const MainApp: React.FC = () => {
                       <FolderCard
                         key={f.id}
                         folder={f}
+                        count={countAssetsInFolder(f.id)}
                         onOpen={() => {
                           setActiveFolder({ type: 'FOLDER', id: f.id });
                           setFolderViewMode('FOLDER');
@@ -1231,8 +1274,8 @@ const MainApp: React.FC = () => {
                       categoryLabel={activeCategory}
                       folderName={
                         activeFolder.type === 'FOLDER'
-                          ? activeFolder.id === 'ARCHIVED'
-                            ? 'Arquivados'
+                          ? activeFolder.id === 'RAW'
+                            ? 'Raw Assets'
                             : folders.find(f => f.id === activeFolder.id)?.name
                           : undefined
                       }
